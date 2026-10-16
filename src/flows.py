@@ -25,10 +25,20 @@ def monitor():
 def train():
     run_script("train.py")
 
+@task
+def predict():
+    run_script("predict_daily.py")
+
+
+@task
+def evaluate():
+    run_script("evaluate_live.py")
 
 @flow(name="daily-ingest-monitor")
 def daily():
     ingest()
+    predict()
+    evaluate()
     monitor()
 
 
@@ -36,6 +46,8 @@ def daily():
 def weekly():
     ingest()
     train()
+    predict()
+    evaluate()
     monitor()
 
 

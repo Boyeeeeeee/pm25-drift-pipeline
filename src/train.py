@@ -3,6 +3,8 @@ import mlflow
 import mlflow.sklearn
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
+import joblib
+from pathlib import Path
 
 from data import load_features
 
@@ -33,6 +35,9 @@ mae_persist = float((hold["target_next_day"] - hold["pm25_today"]).abs().mean())
 # Production model: refit on everything available
 final = fit(df)
 station_map = df.groupby("location_name")["station"].first().to_dict()
+Path("models").mkdir(exist_ok=True)
+joblib.dump({"model": final, "features": FEATS, "station_map": station_map,
+             "trained_through": str(last_day.date())}, "models/latest.joblib")
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
 mlflow.set_experiment("pm25-next-day")
