@@ -1,0 +1,24 @@
+artifact_path: file:///C:/Users/DELL/Downloads/Learning Project/pm25-drift-pipeline/mlruns/1/models/m-92be254279bb4d79ad7a5415b8d54ce9/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.skops
+    predict_fn: predict
+    python_version: 3.11.9
+  sklearn:
+    code: null
+    pickled_model: model.skops
+    serialization_format: skops
+    sklearn_version: 1.9.1
+    skops_trusted_types:
+    - sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor
+mlflow_version: 3.17.1
+model_id: m-92be254279bb4d79ad7a5415b8d54ce9
+model_size_bytes: 934917
+model_uuid: m-92be254279bb4d79ad7a5415b8d54ce9
+prompts: null
+run_id: 6e8e5cb3ccc84d5fb1574db051bfa33f
+utc_time_created: '2026-10-16 15:40:33.796382'

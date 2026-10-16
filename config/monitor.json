@@ -1,0 +1,7 @@
+{
+  "registered_on": "2026-10-16",
+  "window_days": 30,
+  "min_rows": 60,
+  "ks_threshold": 0.5,
+  "ground_truth_rule": "trailing 14-day model MAE > persistence MAE (not yet computed)"
+}
