@@ -70,6 +70,8 @@ Caveats stated in advance:
 
 Each forecast stores `model_trained_through`, the last data day the model saw. Because `train.py` overwrites `models/latest.joblib` at each retrain, forecasts from different model versions end up in the same log, and live MAE is pooled across them unless filtered by that column.
 
+`live_eval` also records `n_models`, the number of distinct model versions inside each evaluation window, so a window that spans a retrain is visible.
+
 Log history and gaps, stated as they happened:
 
 - The log started on **2026-10-16**. The three forecasts for that day were made at about 23:00 on the target day, from data through 10-15, so they are late rather than truly ahead of time. They are kept and flagged here.
@@ -173,7 +175,7 @@ config/monitor.json   registered monitoring rules
 - [x] Prefect flows (failure and retry behaviour checked)
 - [x] Forecast log (`predict_daily.py` run and verified idempotent on re-run)
 - [x] Live evaluation script runs (correctly reports too few scored forecasts so far)
-- [ ] FastAPI service (`serve.py` written, not yet run or tested)
+- [x] FastAPI service (all four endpoints run locally and checked; `/predict` reproduces a logged forecast and rejects bad input with 4xx; `/monitor/status` shows the last logged results, not a live computation)
 - [ ] Tests and CI
 - [ ] Dockerfile
 - [ ] Always-on schedule (the Prefect schedule currently only runs while my machine is on, which already caused a two-day gap in the live log)
@@ -186,3 +188,4 @@ config/monitor.json   registered monitoring rules
 - The live log has a gap (10-17 and 10-18) and three late forecasts on its first day, described above.
 - DuckDB allows one writer process at a time, so the API opens short-lived connections and the pipeline should not run while another process holds the file open. A server database would be the next step for real deployment.
 - The model file is stored with joblib, which is pickle-based. It is only ever loaded from this project's own training output.
+- The API loads the model once at startup, so it must be restarted after each retrain; `/health` reports which training date it is serving.
