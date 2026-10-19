@@ -6,7 +6,7 @@ The point of this project is the pipeline around the model: idempotent ingestion
 
 ## Results
 
-All numbers come from scripts in this repo (`src/baseline.py`, `src/model.py`, `src/drift_backtest.py`, `src/train.py`). The baseline is **persistence** (tomorrow equals today). Error is mean absolute error (MAE) in µg/m³, pooled over four stations.
+All numbers come from scripts in this repo (`src/baseline.py`, `src/model.py`, `src/drift_backtest.py`, `src/train.py`). The baseline is **persistence** (tomorrow equals today). Error is mean absolute error (MAE) in µg/m³, pooled over four stations. Results were computed on a data snapshot; re-running after new ingests will shift them slightly.
 
 ### Walk-forward evaluation (12 test months, Nov 2025 to Oct 2026, 1,214 station-days)
 
@@ -25,7 +25,7 @@ For each test month the model is refit on all earlier data only.
 
 ### Drift backtest (model frozen, trained on data before Nov 2025)
 
-The reference window is 299 rows (Aug to Oct 2025, median 31.1 µg/m³). The model is never retrained. `ks_stat` is the Kolmogorov-Smirnov statistic between the reference and each month's PM2.5 distribution. `gain` is persistence MAE minus frozen-model MAE (negative means the model lost).
+The reference window is 299 rows (Aug to Oct 2025, median 31.1 µg/m³). The model is never retrained. `ks_stat` is the Kolmogorov-Smirnov statistic between the reference and each month's PM2.5 distribution. `gain` is persistence MAE minus frozen-model MAE (negative means the model lost). The 2026-10 row is a partial month.
 
 | Month | Median | ks_stat | gain |
 |---|---|---|---|
@@ -40,7 +40,7 @@ The reference window is 299 rows (Aug to Oct 2025, median 31.1 µg/m³). The mod
 | 2026-07 | 33.1 | 0.12 | 0.73 |
 | 2026-08 | 30.9 | 0.08 | 0.34 |
 | 2026-09 | 25.1 | 0.33 | 0.09 |
-| 2026-10 | 29.7 | 0.11 | 0.85 |
+| 2026-10 (partial) | 29.7 | 0.11 | 0.85 |
 
 What this shows and does not show:
 
@@ -50,7 +50,7 @@ What this shows and does not show:
 
 ## Monitoring rules
 
-Registered in `config/monitor.json` and committed on **2026-10-16**, before the 2026-27 harmattan data existed.
+Written to `config/monitor.json` on **2026-10-16**. The git commit that records them is dated **2026-10-19**; the commit was not backdated. Both dates are before any 2026-27 harmattan data existed.
 
 1. **Input drift (leading indicator):** KS statistic between the trailing 30 days of PM2.5 and the training reference, alert at **0.5** (minimum 60 rows).
 2. **Model degradation (ground truth):** alert when the live model's trailing 14-day MAE is worse than persistence. Forecasts are logged before the actuals exist, and the first forecast for a given station and day is never overwritten.
@@ -58,8 +58,22 @@ Registered in `config/monitor.json` and committed on **2026-10-16**, before the 
 Caveats stated in advance:
 
 - The 0.5 threshold was picked after looking at the backtest above, against a reference window that did not contain a harmattan. The deployed model's reference now includes last winter, so the same shift produces a lower KS, and rule 1 may never fire. If that happens, the finding is that the rule needs recalibrating.
-- Rule 2 is the one to trust. Rule 1 is an early-warning signal.
+- Rule 2 is the one to trust more, but it is coarse early on: the first 28 scored forecasts are about 7 days of four stations that share the same weather, so they are not 28 independent samples. A single weather regime could trip the rule or hide a real problem.
 - Results from the 2026-27 season will be added here, including misses and false alarms.
+
+## Live forecast log
+
+`src/predict_daily.py` logs a next-day PM2.5 forecast for each station from the latest ingested data, next to the persistence forecast (tomorrow = today). The first forecast for a station-day is never overwritten (`INSERT OR IGNORE` on `(location_name, forecast_for)`). A forecast is skipped if the input data is stale or its target day has already passed, so the log only contains forecasts made ahead of time.
+
+`src/evaluate_live.py` compares model MAE with persistence MAE over the last 14 days and reports nothing until 28 scored forecasts exist.
+
+Log history and gaps, stated as they happened:
+
+- The log started on **2026-10-16**. The three forecasts for that day were made at about 23:00 on the target day, from data through 10-15, so they are late rather than truly ahead of time. They are kept and flagged here.
+- One retrospective forecast (Dolphin Estate, target 10-15, made after that day ended) was deleted.
+- There are **no forecasts for 2026-10-17 and 2026-10-18**: the pipeline only ran while my laptop was on. These cannot be backfilled honestly.
+- The first fully ahead-of-time forecasts are for **2026-10-19**.
+- Live results so far: too few scored forecasts to say anything.
 
 ## Architecture
 
@@ -76,19 +90,20 @@ Open-Meteo ──┘                    │               └──> models/late
                            (logs forecasts)    (input drift, KS)
                                   │
                                   v
-                          evaluate_live.py ──> live_eval table
+                          evaluate_live.py
                                   │
                        FastAPI (serve.py): /predict, /forecasts/latest,
                                   /monitor/status, /health
 
-Prefect: daily flow (ingest, forecast, evaluate, monitor), weekly flow (retrain)
+Prefect: daily flow (ingest + monitor, forecast and evaluate steps being added),
+         weekly flow (retrain)
 ```
 
 ## Data
 
-- **PM2.5:** [OpenAQ](https://openaq.org) v3 API, daily aggregates for four Lagos stations (Justrite - Ogolonto, Oshodi Bus Terminal 3, Agege Redline Train Station, Dolphin Estate). Days with under 75% hourly coverage are dropped (99 days).
+- **PM2.5:** [OpenAQ](https://openaq.org) v3 API, daily aggregates for four Lagos stations (Justrite - Ogolonto, Oshodi Bus Terminal 3, Agege Redline Train Station, Dolphin Estate). Days with under 75% hourly coverage are dropped (99 days at the time of the evaluation snapshot).
 - **Weather:** [Open-Meteo](https://open-meteo.com) historical archive, daily values for Lagos. Used in experiments only.
-- 1,682 station-days ingested, 1,517 usable labelled rows after cleaning and the next-day join.
+- At the evaluation snapshot: 1,682 station-days ingested, 1,517 usable labelled rows after cleaning and the next-day join. The database keeps growing as ingest runs.
 - Days are bucketed by Lagos local time (UTC+1). Using UTC dates shifted every day by one.
 - The OpenAQ days endpoint ignored the `datetime_from` filter, so each station's full history is fetched and start dates differ by station.
 
@@ -114,7 +129,7 @@ python src/baseline.py        # persistence baseline
 python src/model.py           # walk-forward evaluation
 python src/drift_backtest.py  # frozen-model drift backtest
 python src/train.py           # train and log to MLflow
-python src/predict_daily.py   # log tomorrow's forecasts
+python src/predict_daily.py   # log tomorrow's forecasts (run after ingest, before the day ends)
 python src/evaluate_live.py   # score logged forecasts against actuals
 python src/monitor.py         # input-drift check
 
@@ -122,8 +137,10 @@ mlflow ui --backend-store-uri sqlite:///mlflow.db
 uvicorn serve:app --app-dir src --port 8000    # API docs at /docs
 python src/flows.py           # Prefect schedule: daily 07:00, weekly Mon 08:00
 ```
-
+MLflow runs (`mlflow.db`, `mlruns/`) and trained models (`models/`) are local and not committed; `python src/train.py` recreates them.
 The OpenAQ API key is free from explore.openaq.org and is read from the `OPENAQ_API_KEY` environment variable.
+
+On Windows PowerShell, set `$env:PYTHONUTF8 = "1"` if a script crashes while printing non-ASCII characters (cp1252 console encoding).
 
 ## Repo layout
 
@@ -151,15 +168,18 @@ config/monitor.json   registered monitoring rules
 - [x] MLflow-tracked training
 - [x] Input-drift monitor with pre-registered rules
 - [x] Prefect flows (failure and retry behaviour checked)
-- [ ] Forecast log, live evaluation and FastAPI service (code written, being verified)
+- [x] Forecast log (`predict_daily.py` run and verified idempotent on re-run)
+- [x] Live evaluation script runs (correctly reports too few scored forecasts so far)
+- [ ] FastAPI service (`serve.py` written, not yet run or tested)
 - [ ] Tests and CI
 - [ ] Dockerfile
-- [ ] Always-on schedule (the Prefect schedule currently only runs while my machine is on)
+- [ ] Always-on schedule (the Prefect schedule currently only runs while my machine is on, which already caused a two-day gap in the live log)
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way
 
 ## Known limitations
 
 - Single-point daily features only. No forecast weather for the target day, no spatial features.
 - Pooled KS across stations is a coarse signal.
+- The live log has a gap (10-17 and 10-18) and three late forecasts on its first day, described above.
 - DuckDB allows one writer process at a time, so the API opens short-lived connections and the pipeline should not run while another process holds the file open. A server database would be the next step for real deployment.
 - The model file is stored with joblib, which is pickle-based. It is only ever loaded from this project's own training output.

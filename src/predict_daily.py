@@ -32,16 +32,26 @@ for name, g in clean.groupby("location_name"):
     if (date.today() - t.date()).days > MAX_STALE_DAYS:
         print(f"{name}: latest day {t.date()} is stale, skipped")
         continue
+    target = (t + pd.Timedelta(days=1)).date()
+    if target < date.today():
+        print(f"{name}: forecast target {target} already past, skipped")
+        continue
     x = pd.DataFrame([{"pm25_today": s[t], "pm25_yesterday": s[y],
                        "station": station_map[name]}])[FEATS]
     pred = float(s[t] + model.predict(x)[0])
-    con.execute("INSERT OR IGNORE INTO predictions VALUES (?,?,?,?,?,?,?,now())",
-                [name, (t + pd.Timedelta(days=1)).date(), t.date(),
-                 pred, float(s[t]), trained_through])
+    print(f"{name}: t={t.date()} target={target} pred={pred:.1f}")
+    con.execute(
+        """INSERT OR IGNORE INTO predictions
+           (location_name, forecast_for, made_from, pred, persist,
+            model_trained_through, made_at)
+           VALUES (?,?,?,?,?,?, now())""",
+        [name, target, t.date(), pred, float(s[t]), trained_through])
 
 after = con.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
 print(f"new forecasts logged: {after - before} (total {after})")
-print(con.sql("SELECT location_name, forecast_for, round(pred,1) AS pred, "
-              "round(persist,1) AS persist FROM predictions "
-              "ORDER BY forecast_for DESC, location_name LIMIT 8"))
+print(con.execute(
+    "SELECT location_name, forecast_for, round(pred,1) AS pred, "
+    "round(persist,1) AS persist FROM predictions "
+    "ORDER BY forecast_for DESC, location_name LIMIT 8"
+).df().to_string(index=False))
 con.close()
