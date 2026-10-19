@@ -49,6 +49,7 @@ What this shows and does not show:
 - The most plausible reason for the January loss is that tree models cannot predict above the levels they saw in training. Predicting the day-to-day change reduced the gap but did not remove it. This is a hypothesis from one winter.
 
 ## Monitoring rules
+- The reference is the full training data of the current production model, and `train.py` rewrites it at every retrain (weekly). So rule 1's baseline moves with each retrain, while its 0.5 threshold was chosen against one fixed historical reference.
 
 Written to `config/monitor.json` on **2026-10-16**. The git commit that records them is dated **2026-10-19**; the commit was not backdated. Both dates are before any 2026-27 harmattan data existed.
 
@@ -66,6 +67,8 @@ Caveats stated in advance:
 `src/predict_daily.py` logs a next-day PM2.5 forecast for each station from the latest ingested data, next to the persistence forecast (tomorrow = today). The first forecast for a station-day is never overwritten (`INSERT OR IGNORE` on `(location_name, forecast_for)`). A forecast is skipped if the input data is stale or its target day has already passed, so the log only contains forecasts made ahead of time.
 
 `src/evaluate_live.py` compares model MAE with persistence MAE over the last 14 days and reports nothing until 28 scored forecasts exist.
+
+Each forecast stores `model_trained_through`, the last data day the model saw. Because `train.py` overwrites `models/latest.joblib` at each retrain, forecasts from different model versions end up in the same log, and live MAE is pooled across them unless filtered by that column.
 
 Log history and gaps, stated as they happened:
 
