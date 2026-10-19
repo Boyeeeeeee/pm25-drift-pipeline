@@ -1,9 +1,10 @@
 .venv/
 .env
 data/
+models/
+mlruns/
+mlflow.db
+reference.csv
 __pycache__/
 *.pyc
 .pytest_cache/
-mlruns/mlflow.db
-reference.csv
-models/
