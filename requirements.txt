@@ -115,7 +115,7 @@ python-dotenv==1.2.4
 python-json-logger==4.2.0
 python-slugify==9.0.0
 pytz==2026.5
-pywin32==312
+pywin32==312; sys_platform == "win32"
 PyYAML==6.0.3
 readchar==4.2.2
 redis==8.1.0

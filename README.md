@@ -166,6 +166,15 @@ sql/views.sql         clean_daily and features views
 config/monitor.json   registered monitoring rules
 ```
 
+## Tests
+
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest -q
+```
+
+The suite uses synthetic data and a stub model, so it needs no API key, network access or real database. It covers: the forecast guards (unknown station, missing previous day, stale data, target already past), the first-forecast-is-kept log, the 28-forecast and strict-worse-than-persistence rules in `evaluate_live.py`, the inclusive `KS >= 0.5` rule and trailing-window logic in `monitor.py`, the 75% coverage filter and gap-safe feature join in SQL, and the API's status codes. One test asserts the values in `config/monitor.json` match the rules registered on 2026-10-16, so changing a registered rule has to be done on purpose, and the README has to change with it.
+
 ## Status
 
 - [x] Idempotent ingestion, SQL cleaning views
@@ -176,7 +185,8 @@ config/monitor.json   registered monitoring rules
 - [x] Forecast log (`predict_daily.py` run and verified idempotent on re-run)
 - [x] Live evaluation script runs (correctly reports too few scored forecasts so far)
 - [x] FastAPI service (all four endpoints run locally and checked; `/predict` reproduces a logged forecast and rejects bad input with 4xx; `/monitor/status` shows the last logged results, not a live computation)
-- [ ] Tests and CI
+- [x] Tests (43 tests, run locally)
+- [ ] CI
 - [ ] Dockerfile
 - [ ] Always-on schedule (the Prefect schedule currently only runs while my machine is on, which already caused a two-day gap in the live log)
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way
