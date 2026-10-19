@@ -51,7 +51,7 @@ What this shows and does not show:
 ## Monitoring rules
 - The reference is the full training data of the current production model, and `train.py` rewrites it at every retrain (weekly). So rule 1's baseline moves with each retrain, while its 0.5 threshold was chosen against one fixed historical reference.
 
-Written to `config/monitor.json` on **2026-10-16**. The git commit that records them is dated **2026-10-19**; the commit was not backdated. Both dates are before any 2026-27 harmattan data existed.
+Registered in `config/monitor.json` and committed on **2026-10-16 at 16:56 (UTC+1)**, before any 2026-27 harmattan data existed. The ground-truth rule's parameters (14-day window, minimum 28 scored forecasts) were added in a later commit at 22:58 the same evening, about five minutes before the first live forecast was logged at 23:03. The KS rule was left unchanged in a commit at 23:00. Commit timestamps are set locally; the push history on GitHub is the independent record.
 
 1. **Input drift (leading indicator):** KS statistic between the trailing 30 days of PM2.5 and the training reference, alert at **0.5** (minimum 60 rows).
 2. **Model degradation (ground truth):** alert when the live model's trailing 14-day MAE is worse than persistence. Forecasts are logged before the actuals exist, and the first forecast for a given station and day is never overwritten.
