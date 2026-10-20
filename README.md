@@ -71,7 +71,9 @@ Caveats stated in advance:
 Each forecast stores `model_trained_through`, the last data day the model saw. Because `train.py` overwrites `models/latest.joblib` at each retrain, forecasts from different model versions end up in the same log, and live MAE is pooled across them unless filtered by that column.
 
 `live_eval` also records `n_models`, the number of distinct model versions inside each evaluation window, so a window that spans a retrain is visible.
+**Where the log is written.** Until `<date of first scheduled run>`, forecasts were produced on my laptop, so their timestamps are my machine's clock. From then on the `daily-forecast` GitHub Actions workflow writes the log. It runs at 07:17 and 11:17 Lagos time, saves `logs/predictions.csv`, `logs/drift_log.csv` and `logs/live_eval.csv`, and commits them, so each forecast's commit time comes from GitHub. The workflow fails visibly if no forecast exists for the day. Forecasts are made on the target day (07:17 or 11:17), from data through the previous day, so part of the target day has already elapsed when they are made.
 
+The model is retrained every Monday at 12:47 Lagos time by the `weekly-retrain` workflow, which commits the new `models/latest.joblib` and `reference.csv` with the holdout MAE in the commit message. Each forecast records the training date of the model that made it, so the log can span several model versions. Until the first retrain, forecasts come from the model trained through 2026-10-14.
 Log history and gaps, stated as they happened:
 
 - The log started on **2026-10-16**. The three forecasts for that day were made at about 23:00 on the target day, from data through 10-15, so they are late rather than truly ahead of time. They are kept and flagged here.
@@ -186,9 +188,11 @@ The suite uses synthetic data and a stub model, so it needs no API key, network 
 - [x] Live evaluation script runs (correctly reports too few scored forecasts so far)
 - [x] FastAPI service (all four endpoints run locally and checked; `/predict` reproduces a logged forecast and rejects bad input with 4xx; `/monitor/status` shows the last logged results, not a live computation)
 - [x] Tests (50 tests, run locally)
-- [ ] CI (workflow added; not yet confirmed green on GitHub)
+- [x] CI (GitHub Actions runs the tests on every push)
+- [ ] Weekly retrain (workflow `weekly-retrain` added; not yet confirmed by a run)
+- [ ] Always-on schedule (workflow `daily-forecast` added; not yet confirmed by a scheduled run)
 - [ ] Dockerfile
-- [ ] Always-on schedule (the Prefect schedule currently only runs while my machine is on, which already caused a two-day gap in the live log)
+
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way
 
 ## Known limitations
