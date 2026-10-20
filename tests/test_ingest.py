@@ -2,6 +2,7 @@ from datetime import date, datetime, timezone
 
 import duckdb
 import pytest
+import requests
 
 import ingest
 
@@ -107,3 +108,56 @@ def test_weather_rows_are_upserted(con, monkeypatch):
     ingest.ingest_weather(con, "2026-10-01", "2026-10-02")
     assert con.execute("SELECT COUNT(*) FROM raw_weather_daily").fetchone()[0] == 2
     assert con.execute("SELECT precip_sum FROM raw_weather_daily WHERE day = '2026-10-02'").fetchone()[0] == 5.0
+
+
+class FakeResponse:
+    def __init__(self, status=200, payload=None):
+        self.status_code, self._payload = status, payload or {"ok": True}
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"{self.status_code}", response=self)
+
+    def json(self):
+        return self._payload
+
+
+def _sequence(monkeypatch, outcomes):
+    calls = []
+
+    def fake_get(url, headers=None, timeout=None):
+        calls.append(url)
+        o = outcomes[len(calls) - 1]
+        if isinstance(o, Exception):
+            raise o
+        return o
+
+    monkeypatch.setattr(ingest.requests, "get", fake_get)
+    monkeypatch.setattr(ingest.time, "sleep", lambda s: None)
+    return calls
+
+
+def test_get_json_retries_a_timeout_then_succeeds(monkeypatch):
+    calls = _sequence(monkeypatch, [requests.Timeout(), FakeResponse(503), FakeResponse()])
+    assert ingest.get_json("http://x") == {"ok": True}
+    assert len(calls) == 3
+
+
+def test_get_json_gives_up_after_three_attempts(monkeypatch):
+    calls = _sequence(monkeypatch, [FakeResponse(500)] * 3)
+    with pytest.raises(requests.HTTPError):
+        ingest.get_json("http://x")
+    assert len(calls) == 3
+
+
+def test_get_json_does_not_retry_a_bad_api_key(monkeypatch):
+    calls = _sequence(monkeypatch, [FakeResponse(401), FakeResponse()])
+    with pytest.raises(requests.HTTPError):
+        ingest.get_json("http://x")
+    assert len(calls) == 1
+
+
+def test_get_json_retries_rate_limiting(monkeypatch):
+    calls = _sequence(monkeypatch, [FakeResponse(429), FakeResponse()])
+    assert ingest.get_json("http://x") == {"ok": True}
+    assert len(calls) == 2

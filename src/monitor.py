@@ -26,10 +26,13 @@ def compute_drift(ref, cur, window_days, min_rows, ks_threshold):
             "n": len(win), "alert": bool(ks >= ks_threshold)}
 
 
+CREATE_DRIFT_LOG = """CREATE TABLE IF NOT EXISTS drift_log (
+    as_of DATE PRIMARY KEY, ks DOUBLE, ref_median DOUBLE, win_median DOUBLE,
+    n INTEGER, alert BOOLEAN, logged_at TIMESTAMP)"""
+
+
 def log_drift(con, r):
-    con.execute("""CREATE TABLE IF NOT EXISTS drift_log (
-        as_of DATE PRIMARY KEY, ks DOUBLE, ref_median DOUBLE, win_median DOUBLE,
-        n INTEGER, alert BOOLEAN, logged_at TIMESTAMP)""")
+    con.execute(CREATE_DRIFT_LOG)
     con.execute("INSERT OR REPLACE INTO drift_log VALUES (?,?,?,?,?,?,?)",
                 [r["as_of"].date(), r["ks"], r["ref_median"], r["win_median"],
                  r["n"], r["alert"], datetime.now(timezone.utc)])

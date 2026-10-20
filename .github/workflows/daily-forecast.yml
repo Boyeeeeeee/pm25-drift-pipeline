@@ -1,0 +1,73 @@
+name: daily-forecast
+
+# Runs the pipeline on GitHub's servers so forecasts no longer depend on my laptop being on.
+# Two attempts a day (07:17 and 11:17 Lagos time). The second is a no-op if the first worked,
+# because the first forecast for a station-day is never overwritten.
+on:
+  schedule:
+    - cron: "17 6 * * *"
+    - cron: "17 10 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Only one pipeline run at a time, so two runs can never push log commits against each other
+concurrency:
+  group: pm25-pipeline
+  cancel-in-progress: false
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      OPENAQ_API_KEY: ${{ secrets.OPENAQ_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore logs into a fresh database
+        run: |
+          mkdir -p data
+          python src/logstore.py import
+
+      - name: Ingest
+        run: python src/ingest.py
+
+      - name: Forecast
+        run: python src/predict_daily.py
+
+      - name: Score logged forecasts
+        run: python src/evaluate_live.py
+
+      - name: Drift check
+        run: python src/monitor.py
+
+      - name: Export logs
+        run: python src/logstore.py export
+
+      - name: Commit logs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add logs
+          if git diff --cached --quiet; then
+            echo "No log changes to commit"
+          else
+            git commit -m "Log forecasts and monitoring for $(TZ=Africa/Lagos date +%F)"
+            git pull --rebase origin main
+            git push
+          fi
+
+      # Last on purpose: the logs are committed first, then a missing forecast fails the run
+      - name: Fail loudly if no forecast exists for today
+        run: python src/logstore.py check

@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import date, datetime, timedelta, timezone
 
 import duckdb
@@ -17,10 +18,25 @@ LAT, LON = 6.5244, 3.3792
 START = "2025-08-01"
 
 
-def get_json(url, headers=None):
-    r = requests.get(url, headers=headers, timeout=30)
-    r.raise_for_status()
-    return r.json()
+def _retryable(exc):
+    """Network errors, timeouts, 429 and 5xx are worth retrying; 4xx (bad key, bad URL) are not."""
+    if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+        return True
+    resp = getattr(exc, "response", None)
+    return resp is not None and (resp.status_code == 429 or resp.status_code >= 500)
+
+
+def get_json(url, headers=None, retries=3, backoff=5):
+    for attempt in range(1, retries + 1):
+        try:
+            r = requests.get(url, headers=headers, timeout=30)
+            r.raise_for_status()
+            return r.json()
+        except requests.RequestException as e:
+            if attempt == retries or not _retryable(e):
+                raise
+            print(f"GET failed ({e.__class__.__name__}), retry {attempt}/{retries - 1}")
+            time.sleep(backoff * attempt)
 
 
 def init(con):
