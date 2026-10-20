@@ -28,3 +28,32 @@ jobs:
 
       - name: Run tests
         run: python -m pytest -q
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t pm25-api .
+
+      - name: Start container
+        run: docker run -d --name api -p 8000:8000 pm25-api
+
+      - name: Wait for the API, then call every endpoint
+        run: |
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/health > /dev/null 2>&1; then break; fi
+            sleep 2
+          done
+          curl -fsS http://127.0.0.1:8000/health; echo
+          curl -fsS -X POST http://127.0.0.1:8000/predict \
+            -H "Content-Type: application/json" \
+            -d '{"station":"Agege Redline Train Station","pm25_today":31.2,"pm25_yesterday":35.0}'; echo
+          curl -fsS http://127.0.0.1:8000/forecasts/latest; echo
+          curl -fsS http://127.0.0.1:8000/monitor/status; echo
+
+      - name: Container logs
+        if: always()
+        run: docker logs api

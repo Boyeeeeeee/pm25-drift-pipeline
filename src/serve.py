@@ -51,7 +51,10 @@ class ForecastRow(BaseModel):
 
 def query(sql):
     # Short-lived read-only connection so the pipeline can still write between requests
-    con = duckdb.connect(DB, read_only=True)
+    try:
+        con = duckdb.connect(DB, read_only=True)
+    except duckdb.IOException:
+        return []  # no database file (for example a fresh container before import)
     try:
         return json.loads(con.execute(sql).df().to_json(orient="records", date_format="iso"))
     except (duckdb.CatalogException, duckdb.BinderException):
@@ -61,10 +64,12 @@ def query(sql):
 
 
 def scored_count():
+    """Forecasts that already have an actual. None when this deployment has no raw data
+    (for example the Docker image, which only holds the committed logs)."""
     rows = query("""SELECT COUNT(*) AS n FROM predictions p
                     JOIN clean_daily c ON c.location_name = p.location_name
                                        AND c.day = p.forecast_for""")
-    return int(rows[0]["n"]) if rows else 0
+    return int(rows[0]["n"]) if rows else None
 
 
 @app.get("/health", response_model=HealthOut)
@@ -109,11 +114,17 @@ def monitor_status():
                   "FROM drift_log ORDER BY as_of DESC LIMIT 5")
     live = query("SELECT * EXCLUDE (as_of), CAST(as_of AS VARCHAR) AS as_of "
                  "FROM live_eval ORDER BY as_of DESC LIMIT 5")
+    scored = scored_count()
+    if live:
+        status = "evaluated"
+    elif scored is None:
+        status = "unavailable"  # cannot count scored forecasts without the raw data
+    else:
+        status = "insufficient_data"
     return {
         "note": "Last logged results of monitor.py and evaluate_live.py; nothing is recomputed on request.",
         "input_drift": drift,
-        "live_eval": {"status": "evaluated" if live else "insufficient_data",
-                      "scored_forecasts": scored_count(),
+        "live_eval": {"status": status, "scored_forecasts": scored,
                       "required": need, "window_days": window,
                       "history": live},
     }

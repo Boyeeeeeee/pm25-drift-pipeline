@@ -149,6 +149,16 @@ The OpenAQ API key is free from explore.openaq.org and is read from the `OPENAQ_
 
 On Windows PowerShell, set `$env:PYTHONUTF8 = "1"` if a script crashes while printing non-ASCII characters (cp1252 console encoding).
 
+## Docker
+
+The image serves the API only; the pipeline itself runs on GitHub Actions.
+
+```powershell
+docker build -t pm25-api .
+docker run --rm -p 8000:8000 pm25-api    # docs at http://127.0.0.1:8000/docs
+```
+
+The image contains the code, the trained model (`models/latest.joblib`) and a snapshot of the committed logs (`logs/`), which are loaded into a fresh DuckDB when the container starts. It has no raw air-quality data, so `/monitor/status` reports `unavailable` for the scored-forecast count instead of a number. Rebuild the image to pick up newer forecasts and models. The container runs as a non-root user and has a health check. Dependencies are in `requirements-docker.txt`, which has to be kept in step with `requirements.txt`. CI builds the image and calls every endpoint on each push.
 ## Repo layout
 
 ```
@@ -166,6 +176,8 @@ src/
   serve.py            FastAPI service
 sql/views.sql         clean_daily and features views
 config/monitor.json   registered monitoring rules
+Dockerfile
+requirements-docker.txt
 ```
 
 ## Tests
@@ -189,10 +201,9 @@ The suite uses synthetic data and a stub model, so it needs no API key, network 
 - [x] FastAPI service (all four endpoints run locally and checked; `/predict` reproduces a logged forecast and rejects bad input with 4xx; `/monitor/status` shows the last logged results, not a live computation)
 - [x] Tests (50 tests, run locally)
 - [x] CI (GitHub Actions runs the tests on every push)
-- [ ] Weekly retrain (workflow `weekly-retrain` added; not yet confirmed by a run)
+- [x] Weekly retrain (ran manually on 2026-10-20; first scheduled run is Monday 2026-10-26)
+- [ ] Dockerfile (API image; built and smoke-tested by CI, pending first green run)
 - [ ] Always-on schedule (workflow `daily-forecast` added; not yet confirmed by a scheduled run)
-- [ ] Dockerfile
-
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way
 
 ## Known limitations

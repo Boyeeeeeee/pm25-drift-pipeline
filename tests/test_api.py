@@ -91,3 +91,44 @@ def test_monitor_status_reports_a_logged_evaluation(client, tmp_path):
     r = client.get("/monitor/status").json()
     assert r["live_eval"]["status"] == "evaluated"
     assert r["live_eval"]["history"][0]["as_of"] == "2026-10-26"
+
+
+@pytest.fixture
+def logs_only_client(tmp_path, monkeypatch):
+    """What the Docker image has: the committed logs imported into a fresh database, no raw data."""
+    from logstore import import_logs, export_logs
+
+    seed = duckdb.connect(":memory:")
+    from predict_daily import log_forecasts
+    from datetime import date
+    log_forecasts(seed, [{"location_name": "Agege", "forecast_for": date(2026, 10, 20),
+                          "made_from": date(2026, 10, 19), "pred": 38.0, "persist": 38.8}], "2026-10-18")
+    export_logs(seed, tmp_path / "logs")
+
+    path = str(tmp_path / "fresh.duckdb")
+    con = duckdb.connect(path)
+    import_logs(con, tmp_path / "logs")
+    con.close()
+    monkeypatch.setattr(serve, "DB", path)
+    monkeypatch.setattr(serve.joblib, "load", lambda _: make_bundle(delta=-2.0))
+    with TestClient(serve.app) as c:
+        yield c
+
+
+def test_logs_only_deployment_serves_forecasts(logs_only_client):
+    rows = logs_only_client.get("/forecasts/latest").json()
+    assert rows == [{"location_name": "Agege", "forecast_for": "2026-10-20",
+                     "made_from": "2026-10-19", "pred": 38.0, "persistence": 38.8}]
+
+
+def test_logs_only_deployment_does_not_claim_zero_scored_forecasts(logs_only_client):
+    live = logs_only_client.get("/monitor/status").json()["live_eval"]
+    assert live["status"] == "unavailable" and live["scored_forecasts"] is None
+
+
+def test_missing_database_file_gives_empty_results_not_a_500(tmp_path, monkeypatch):
+    monkeypatch.setattr(serve, "DB", str(tmp_path / "nope.duckdb"))
+    monkeypatch.setattr(serve.joblib, "load", lambda _: make_bundle())
+    with TestClient(serve.app) as c:
+        assert c.get("/forecasts/latest").json() == []
+        assert c.get("/health").status_code == 200
