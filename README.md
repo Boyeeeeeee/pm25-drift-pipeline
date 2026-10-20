@@ -185,8 +185,8 @@ The suite uses synthetic data and a stub model, so it needs no API key, network 
 - [x] Forecast log (`predict_daily.py` run and verified idempotent on re-run)
 - [x] Live evaluation script runs (correctly reports too few scored forecasts so far)
 - [x] FastAPI service (all four endpoints run locally and checked; `/predict` reproduces a logged forecast and rejects bad input with 4xx; `/monitor/status` shows the last logged results, not a live computation)
-- [x] Tests (43 tests, run locally)
-- [ ] CI
+- [x] Tests (50 tests, run locally)
+- [ ] CI (workflow added; not yet confirmed green on GitHub)
 - [ ] Dockerfile
 - [ ] Always-on schedule (the Prefect schedule currently only runs while my machine is on, which already caused a two-day gap in the live log)
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way

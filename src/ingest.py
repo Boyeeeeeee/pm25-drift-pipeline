@@ -33,6 +33,16 @@ def init(con):
         wind_max DOUBLE, wind_dir DOUBLE, ingested_at TIMESTAMP)""")
 
 
+def to_daily_row(sensor_id, loc_id, name, r, ingested_at):
+    """One OpenAQ daily record as a raw_openaq_daily row.
+
+    The day is the station's LOCAL calendar date (the 'local' timestamp, UTC+1 in
+    Lagos). Slicing the 'utc' timestamp instead puts every day one day early.
+    """
+    return [sensor_id, loc_id, name, r["period"]["datetimeFrom"]["local"][:10],
+            r["value"], (r.get("coverage") or {}).get("percentComplete"), ingested_at]
+
+
 def ingest_openaq(con, start, end):
     h = {"X-API-Key": os.environ["OPENAQ_API_KEY"]}
     now = datetime.now(timezone.utc)
@@ -47,8 +57,7 @@ def ingest_openaq(con, start, end):
         for r in rows:
             con.execute(
                 "INSERT OR REPLACE INTO raw_openaq_daily VALUES (?,?,?,?,?,?,?)",
-                [sensor["id"], loc_id, name, r["period"]["datetimeFrom"]["local"][:10],
-                 r["value"], (r.get("coverage") or {}).get("percentComplete"), now],
+                to_daily_row(sensor["id"], loc_id, name, r, now),
             )
         print(f"{name}: {len(rows)} daily rows upserted")
 
