@@ -1,10 +1,10 @@
 .venv/
 .env
 data/
-models/
+models/*
+!models/latest.joblib
 mlruns/
 mlflow.db
-reference.csv
 __pycache__/
 *.pyc
 .pytest_cache/
