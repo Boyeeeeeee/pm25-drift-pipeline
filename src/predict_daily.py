@@ -17,17 +17,20 @@ CREATE_PREDICTIONS = """CREATE TABLE IF NOT EXISTS predictions (
 INSERT_PREDICTION = """INSERT OR IGNORE INTO predictions
     (location_name, forecast_for, made_from, pred, persist,
      model_trained_through, made_at)
-    VALUES (?,?,?,?,?,?, now())"""
+    VALUES (?,?,?,?,?,?, now() AT TIME ZONE 'UTC')"""
 
 
 def build_forecasts(clean, bundle, today, max_stale_days=MAX_STALE_DAYS, log=lambda msg: None):
     """Return one forecast dict per station that passes every guard.
 
-    A station is skipped if it is not in the training station map, has no value
+    Days on or after `today` are ignored. A station is skipped if it is not in the training station map, has no value
     for the day before its latest day, has data older than max_stale_days, or its
     target day is already in the past (such a forecast would not be made ahead of time).
     """
     model, feats, station_map = bundle["model"], bundle["features"], bundle["station_map"]
+    # The current day is still in progress, so any value for it is a partial-day average.
+    # Forecast only from complete days, however late in the day this runs.
+    clean = clean[clean["day"].dt.date < today]
     rows = []
     for name, g in clean.groupby("location_name"):
         if name not in station_map:

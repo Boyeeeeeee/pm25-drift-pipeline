@@ -71,7 +71,8 @@ Caveats stated in advance:
 Each forecast stores `model_trained_through`, the last data day the model saw. Because `train.py` overwrites `models/latest.joblib` at each retrain, forecasts from different model versions end up in the same log, and live MAE is pooled across them unless filtered by that column.
 
 `live_eval` also records `n_models`, the number of distinct model versions inside each evaluation window, so a window that spans a retrain is visible.
-**Where the log is written.** Until `<date of first scheduled run>`, forecasts were produced on my laptop, so their timestamps are my machine's clock. From then on the `daily-forecast` GitHub Actions workflow writes the log. It runs at 07:17 and 11:17 Lagos time, saves `logs/predictions.csv`, `logs/drift_log.csv` and `logs/live_eval.csv`, and commits them, so each forecast's commit time comes from GitHub. The workflow fails visibly if no forecast exists for the day. Forecasts are made on the target day (07:17 or 11:17), from data through the previous day, so part of the target day has already elapsed when they are made.
+**Where the log is written.** It is scheduled for 07:17 and 11:17 Lagos time, but GitHub starts scheduled runs late: the first scheduled runs started at about 12:49 and 16:14 Lagos time, five hours after their slots. Forecasts for a day are therefore made around midday or later on that day, from data through the day before. From then on the `daily-forecast` GitHub Actions workflow writes the log. It runs at 07:17 and 11:17 Lagos time, saves `logs/predictions.csv`, `logs/drift_log.csv` and `logs/live_eval.csv`, and commits them, so each forecast's commit time comes from GitHub. The workflow fails visibly if no forecast exists for the day. Forecasts are made on the target day (07:17 or 11:17), from data through the previous day, so part of the target day has already elapsed when they are made.
+**Timestamps.** `made_at` is UTC for every forecast made by GitHub Actions (from 2026-10-21). The earlier forecasts, made on my laptop (10-16, 10-19 and 10-20), stored Lagos local time (UTC+1) by mistake; they are left unchanged so the history is not edited. Forecasts use only complete days: a day dated today is ignored even if it has passed the 75% coverage filter.
 
 The model is retrained every Monday at 12:47 Lagos time by the `weekly-retrain` workflow, which commits the new `models/latest.joblib` and `reference.csv` with the holdout MAE in the commit message. Each forecast records the training date of the model that made it, so the log can span several model versions. Until the first retrain, forecasts come from the model trained through 2026-10-14.
 Log history and gaps, stated as they happened:
@@ -202,8 +203,8 @@ The suite uses synthetic data and a stub model, so it needs no API key, network 
 - [x] Tests (50 tests, run locally)
 - [x] CI (GitHub Actions runs the tests on every push)
 - [x] Weekly retrain (ran manually on 2026-10-20; first scheduled run is Monday 2026-10-26)
-- [ ] Dockerfile (API image; built and smoke-tested by CI, pending first green run)
-- [ ] Always-on schedule (workflow `daily-forecast` added; not yet confirmed by a scheduled run)
+- [x] Dockerfile (API image; built and smoke-tested by CI, pending first green run)
+- [x] Always-on schedule (GitHub Actions `daily-forecast`; first scheduled run 2026-10-20)
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way
 
 ## Known limitations

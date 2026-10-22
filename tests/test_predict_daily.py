@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 
 import duckdb
 import pytest
@@ -49,10 +49,13 @@ def test_target_on_the_current_day_is_allowed():
     assert rows[0]["forecast_for"] == TODAY
 
 
-def test_target_in_the_future_is_allowed():
-    clean = make_clean([("Agege", "2026-10-18", 35.0), ("Agege", "2026-10-19", 31.2)])
+def test_the_target_is_never_later_than_today():
+    # Data dated today is a partial day and is ignored, so the latest usable day is 10-18
+    # and the forecast is for today, not for tomorrow.
+    clean = make_clean([("Agege", "2026-10-17", 40.0), ("Agege", "2026-10-18", 35.0),
+                        ("Agege", "2026-10-19", 31.2)])
     rows = build_forecasts(clean, make_bundle(), TODAY)
-    assert rows[0]["forecast_for"] == date(2026, 10, 20)
+    assert rows[0]["forecast_for"] == TODAY
 
 
 def test_each_station_is_judged_separately():
@@ -93,3 +96,24 @@ def test_a_new_day_adds_new_rows():
     for r in later:
         r["forecast_for"] = date(2026, 10, 20)
     assert log_forecasts(con, later, "2026-10-14") == 2
+
+
+def test_a_partial_value_for_the_current_day_is_never_used():
+    # A run late in the day can see today's partial average. The forecast must come from
+    # the last complete day (10-18), not from the partial 10-19 reading.
+    clean = make_clean([("Agege", "2026-10-17", 35.0), ("Agege", "2026-10-18", 31.2),
+                        ("Agege", "2026-10-19", 5.0)])
+    rows = build_forecasts(clean, make_bundle(delta=-2.0), TODAY)
+    assert len(rows) == 1
+    assert rows[0]["made_from"] == date(2026, 10, 18)
+    assert rows[0]["forecast_for"] == TODAY
+    assert rows[0]["persist"] == pytest.approx(31.2)
+
+
+def test_made_at_is_utc_whatever_the_machine_timezone_is():
+    con = duckdb.connect(":memory:")
+    con.execute("SET TimeZone = 'Asia/Tokyo'")  # +9h: a local-time stamp would be ~9h off
+    log_forecasts(con, _rows(10.0), "2026-10-14")
+    made_at = con.execute("SELECT MIN(made_at) FROM predictions").fetchone()[0]
+    now_utc = datetime.now(timezone.utc).replace(tzinfo=None)
+    assert abs((made_at - now_utc).total_seconds()) < 120
