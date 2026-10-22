@@ -52,6 +52,11 @@ jobs:
       - name: Drift check
         run: python src/monitor.py
 
+      # Not allowed to block the run: the forecasts and logs matter more than the report
+      - name: Scoreboard
+        continue-on-error: true
+        run: python src/scoreboard.py
+
       - name: Export logs
         run: python src/logstore.py export
 
@@ -60,6 +65,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add logs
+          if [ -f SCOREBOARD.md ]; then git add SCOREBOARD.md; fi
           if git diff --cached --quiet; then
             echo "No log changes to commit"
           else

@@ -3,6 +3,7 @@
 A scheduled pipeline that pulls Lagos air-quality and weather data, forecasts next-day PM2.5, tracks every training run, and watches for input drift and model degradation.
 
 The point of this project is the pipeline around the model: idempotent ingestion, SQL cleaning layers, experiment tracking, orchestration with retries, and monitoring rules that were written down before the data they will be judged on arrived. The model is deliberately modest, and the results below say exactly how modest.
+**Live results:** see [SCOREBOARD.md](SCOREBOARD.md), rebuilt by every daily run.
 
 ## Results
 
@@ -75,6 +76,9 @@ Each forecast stores `model_trained_through`, the last data day the model saw. B
 **Timestamps.** `made_at` is UTC for every forecast made by GitHub Actions (from 2026-10-21). The earlier forecasts, made on my laptop (10-16, 10-19 and 10-20), stored Lagos local time (UTC+1) by mistake; they are left unchanged so the history is not edited. Forecasts use only complete days: a day dated today is ignored even if it has passed the 75% coverage filter.
 
 The model is retrained every Monday at 12:47 Lagos time by the `weekly-retrain` workflow, which commits the new `models/latest.joblib` and `reference.csv` with the holdout MAE in the commit message. Each forecast records the training date of the model that made it, so the log can span several model versions. Until the first retrain, forecasts come from the model trained through 2026-10-14.
+
+SCOREBOARD.md lists every forecast that has an actual, including misses, so the live record can be checked without running anything.
+
 Log history and gaps, stated as they happened:
 
 - The log started on **2026-10-16**. The three forecasts for that day were made at about 23:00 on the target day, from data through 10-15, so they are late rather than truly ahead of time. They are kept and flagged here.
@@ -204,6 +208,7 @@ The suite uses synthetic data and a stub model, so it needs no API key, network 
 - [x] CI (GitHub Actions runs the tests on every push)
 - [x] Weekly retrain (ran manually on 2026-10-20; first scheduled run is Monday 2026-10-26)
 - [x] Dockerfile (API image; built and smoke-tested by CI, pending first green run)
+- [x] Public scoreboard of every scored live forecast (SCOREBOARD.md, regenerated daily)
 - [x] Always-on schedule (GitHub Actions `daily-forecast`; first scheduled run 2026-10-20)
 - [ ] Live validation through the 2026-27 harmattan, results reported here either way
 
