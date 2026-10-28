@@ -13,7 +13,7 @@ PARAMS = dict(loss="absolute_error", max_depth=3, learning_rate=0.05,
               max_iter=200, random_state=0)
 HOLDOUT_DAYS = 60
 
-df = load_features().sort_values("day")
+df = load_features().sort_values(["day", "location_name"])
 last_day = df["day"].max()
 split = last_day - pd.Timedelta(days=HOLDOUT_DAYS)
 train = df[df["day"] < split - pd.Timedelta(days=1)]
