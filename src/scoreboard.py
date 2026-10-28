@@ -1,4 +1,8 @@
+"""Write SCOREBOARD.md: every live forecast that has an actual, model against persistence.
 
+Misses are listed the same way as wins. The numbers come from the forecast log
+(logs/predictions.csv, restored into DuckDB) and the daily actuals from ingest.
+"""
 import json
 import sys
 
@@ -92,10 +96,11 @@ def render(m, n_logged, window_days, min_rows, pred=None, actual=None):
     L += ["", "## Read this before drawing conclusions", "",
           "- Few forecasts, four stations that share the same weather: they are not independent samples.",
           "- † Made at about 23:00 on the target day, so not ahead of time. Kept and flagged.",
-          "- Forecasts from GitHub Actions are made from midday on the target day, from data through the "
-          "day before; part of the target day has already passed.",
+          "- Forecasts from GitHub Actions are made around midday or later on the target day, from data "
+          "through the day before; part of the target day has already passed.",
           "- Actuals can be revised after a day ends. This table is rebuilt from the latest ingest.",
-          "- The model changes at each weekly retrain; see the version table above.", ""]
+          "- The model changes at each weekly retrain. Each version above has scored different days, so "
+          "compare a version with its own persistence column, not with another version's MAE.", ""]
     return "\n".join(L)
 
 
