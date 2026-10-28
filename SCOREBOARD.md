@@ -4,10 +4,10 @@ Every logged forecast that already has an actual, model against persistence (tom
 
 ## Summary
 
-- Forecasts logged: 39; scored: 35; actuals through 2026-10-26
-- Model MAE: 6.66   Persistence MAE: 8.08   Difference (persistence minus model): +1.42
-- Model closer on 20 of 35 forecasts, persistence on 15, ties 0
-- Rule 2 over the last 14 days (n=35, as of 2026-10-26): model 6.66, persistence 8.08, **ALERT=False**
+- Forecasts logged: 43; scored: 39; actuals through 2026-10-27
+- Model MAE: 6.30   Persistence MAE: 7.58   Difference (persistence minus model): +1.28
+- Model closer on 22 of 39 forecasts, persistence on 17, ties 0
+- Rule 2 over the last 14 days (n=39, as of 2026-10-27): model 6.30, persistence 7.58, **ALERT=False**
 
 ## By forecast day
 
@@ -22,15 +22,16 @@ Every logged forecast that already has an actual, model against persistence (tom
 | 2026-10-24 | 4 | 4.34 | 3.48 |
 | 2026-10-25 | 4 | 3.24 | 4.65 |
 | 2026-10-26 | 4 | 3.23 | 4.90 |
+| 2026-10-27 | 4 | 3.16 | 3.23 |
 
 ## By station
 
 | Station | Forecasts | Model MAE | Persistence MAE |
 |---|---|---|---|
-| Agege Redline Train Station | 9 | 6.08 | 6.97 |
-| Dolphin Estate - Lagos | 8 | 8.53 | 10.00 |
-| Justrite - Ogolonto | 9 | 5.99 | 7.36 |
-| Oshodi Bus Terminal 3 | 9 | 6.26 | 8.21 |
+| Agege Redline Train Station | 10 | 5.69 | 6.57 |
+| Dolphin Estate - Lagos | 9 | 8.27 | 9.52 |
+| Justrite - Ogolonto | 10 | 5.80 | 7.00 |
+| Oshodi Bus Terminal 3 | 10 | 5.66 | 7.44 |
 
 ## By model version (training date)
 
@@ -38,11 +39,16 @@ Every logged forecast that already has an actual, model against persistence (tom
 |---|---|---|---|
 | 2026-10-14 | 11 | 7.06 | 7.45 |
 | 2026-10-18 | 24 | 6.48 | 8.37 |
+| 2026-10-24 | 4 | 3.16 | 3.23 |
 
 ## Every scored forecast, newest first
 
 | Day | Station | Forecast | Persistence | Actual | Model err | Persistence err | Closer |
 |---|---|---|---|---|---|---|---|
+| 2026-10-27 | Agege Redline Train Station | 36.0 | 36.8 | 33.8 | 2.2 | 3.0 | model |
+| 2026-10-27 | Dolphin Estate - Lagos | 16.8 | 16.2 | 10.6 | 6.2 | 5.6 | persistence |
+| 2026-10-27 | Justrite - Ogolonto | 27.8 | 27.5 | 23.7 | 4.1 | 3.8 | persistence |
+| 2026-10-27 | Oshodi Bus Terminal 3 | 37.2 | 37.9 | 37.4 | 0.2 | 0.5 | model |
 | 2026-10-26 | Agege Redline Train Station | 31.2 | 30.8 | 36.8 | 5.6 | 6.0 | model |
 | 2026-10-26 | Dolphin Estate - Lagos | 13.6 | 10.9 | 16.2 | 2.6 | 5.3 | model |
 | 2026-10-26 | Justrite - Ogolonto | 27.5 | 23.3 | 27.5 | 0.0 | 4.2 | model |
@@ -83,6 +89,6 @@ Every logged forecast that already has an actual, model against persistence (tom
 
 - Few forecasts, four stations that share the same weather: they are not independent samples.
 - † Made at about 23:00 on the target day, so not ahead of time. Kept and flagged.
-- Forecasts from GitHub Actions are made from midday on the target day, from data through the day before; part of the target day has already passed.
+- Forecasts from GitHub Actions are made around midday or later on the target day, from data through the day before; part of the target day has already passed.
 - Actuals can be revised after a day ends. This table is rebuilt from the latest ingest.
-- The model changes at each weekly retrain; see the version table above.
+- The model changes at each weekly retrain. Each version above has scored different days, so compare a version with its own persistence column, not with another version's MAE.
