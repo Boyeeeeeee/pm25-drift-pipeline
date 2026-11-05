@@ -4,10 +4,10 @@ Every logged forecast that already has an actual, model against persistence (tom
 
 ## Summary
 
-- Forecasts logged: 69; scored: 65; actuals through 2026-11-03
-- Model MAE: 6.10   Persistence MAE: 7.11   Difference (persistence minus model): +1.01
-- Model closer on 36 of 65 forecasts, persistence on 29, ties 0
-- Rule 2 over the last 14 days (n=54, as of 2026-11-03): model 5.91, persistence 7.04, **ALERT=False**
+- Forecasts logged: 72; scored: 68; actuals through 2026-11-04
+- Model MAE: 6.17   Persistence MAE: 7.02   Difference (persistence minus model): +0.86
+- Model closer on 36 of 68 forecasts, persistence on 32, ties 0
+- Rule 2 over the last 14 days (n=53, as of 2026-11-04): model 5.25, persistence 6.12, **ALERT=False**
 
 ## By forecast day
 
@@ -30,15 +30,16 @@ Every logged forecast that already has an actual, model against persistence (tom
 | 2026-11-01 | 4 | 6.94 | 5.88 |
 | 2026-11-02 | 3 | 2.97 | 2.00 |
 | 2026-11-03 | 3 | 6.12 | 7.00 |
+| 2026-11-04 | 3 | 7.50 | 5.07 |
 
 ## By station
 
 | Station | Forecasts | Model MAE | Persistence MAE |
 |---|---|---|---|
-| Agege Redline Train Station | 17 | 5.68 | 6.31 |
+| Agege Redline Train Station | 18 | 5.53 | 5.99 |
 | Dolphin Estate - Lagos | 14 | 8.56 | 9.84 |
-| Justrite - Ogolonto | 17 | 5.39 | 6.26 |
-| Oshodi Bus Terminal 3 | 17 | 5.22 | 6.52 |
+| Justrite - Ogolonto | 18 | 5.57 | 6.29 |
+| Oshodi Bus Terminal 3 | 18 | 5.54 | 6.59 |
 
 ## By model version (training date)
 
@@ -48,12 +49,15 @@ Every logged forecast that already has an actual, model against persistence (tom
 | 2026-10-18 | 24 | 6.48 | 8.37 |
 | 2026-10-24 | 24 | 5.68 | 6.35 |
 | 2026-10-31 | 3 | 2.97 | 2.00 |
-| 2026-11-01 | 3 | 6.12 | 7.00 |
+| 2026-11-01 | 6 | 6.81 | 6.03 |
 
 ## Every scored forecast, newest first
 
 | Day | Station | Forecast | Persistence | Actual | Model err | Persistence err | Closer |
 |---|---|---|---|---|---|---|---|
+| 2026-11-04 | Agege Redline Train Station | 42.8 | 45.2 | 45.7 | 2.9 | 0.5 | persistence |
+| 2026-11-04 | Justrite - Ogolonto | 27.3 | 29.1 | 36.0 | 8.7 | 6.9 | persistence |
+| 2026-11-04 | Oshodi Bus Terminal 3 | 45.5 | 48.6 | 56.4 | 10.9 | 7.8 | persistence |
 | 2026-11-03 | Agege Redline Train Station | 39.3 | 39.3 | 45.2 | 5.9 | 5.9 | model |
 | 2026-11-03 | Justrite - Ogolonto | 23.5 | 18.8 | 29.1 | 5.6 | 10.3 | model |
 | 2026-11-03 | Oshodi Bus Terminal 3 | 41.7 | 43.8 | 48.6 | 6.9 | 4.8 | persistence |
